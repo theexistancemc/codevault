@@ -8,8 +8,15 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey);
 export interface CodeSnippet {
   id: string;
   title: string;
-  language: 'skript' | 'javascript' | 'html';
+  language: string;
   code: string;
   created_at: string;
   updated_at: string;
 }
+
+export const POPULAR_LANGUAGES = [
+  'JavaScript', 'Python', 'Java', 'C++', 'C#', 'TypeScript',
+  'Ruby', 'Go', 'Rust', 'PHP', 'Swift', 'Kotlin',
+  'HTML', 'CSS', 'SQL', 'Bash', 'PowerShell',
+  'Skript', 'Lua', 'Perl', 'R', 'Scala', 'Haskell'
+];

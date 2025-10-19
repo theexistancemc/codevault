@@ -18,16 +18,31 @@ export function SnippetList({ snippets, selectedId, onSelect, onDelete }: Snippe
   };
 
   const getLanguageColor = (language: string) => {
-    switch (language) {
-      case 'skript':
-        return 'bg-amber-500';
-      case 'javascript':
-        return 'bg-yellow-400';
-      case 'html':
-        return 'bg-orange-500';
-      default:
-        return 'bg-gray-500';
-    }
+    const lang = language.toLowerCase();
+    if (lang.includes('java') && !lang.includes('script')) return 'bg-red-500';
+    if (lang.includes('python')) return 'bg-blue-500';
+    if (lang.includes('javascript') || lang === 'js') return 'bg-yellow-400';
+    if (lang.includes('typescript') || lang === 'ts') return 'bg-blue-600';
+    if (lang.includes('html')) return 'bg-orange-500';
+    if (lang.includes('css')) return 'bg-blue-400';
+    if (lang.includes('rust')) return 'bg-orange-600';
+    if (lang.includes('go')) return 'bg-cyan-500';
+    if (lang.includes('ruby')) return 'bg-red-600';
+    if (lang.includes('php')) return 'bg-indigo-500';
+    if (lang.includes('swift')) return 'bg-orange-400';
+    if (lang.includes('kotlin')) return 'bg-purple-500';
+    if (lang.includes('c++') || lang.includes('cpp')) return 'bg-blue-700';
+    if (lang.includes('c#') || lang.includes('csharp')) return 'bg-green-600';
+    if (lang.includes('skript')) return 'bg-amber-500';
+    if (lang.includes('sql')) return 'bg-pink-500';
+    if (lang.includes('bash') || lang.includes('shell')) return 'bg-gray-700';
+    if (lang.includes('lua')) return 'bg-blue-800';
+    if (lang.includes('perl')) return 'bg-indigo-600';
+    if (lang.includes('scala')) return 'bg-red-700';
+    if (lang.includes('haskell')) return 'bg-purple-600';
+    if (lang.includes('r')) return 'bg-blue-500';
+    if (lang.includes('powershell')) return 'bg-blue-600';
+    return 'bg-gray-500';
   };
 
   return (

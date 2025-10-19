@@ -4,11 +4,10 @@ import { supabase, CodeSnippet } from './lib/supabase';
 import { CodeEditor } from './components/CodeEditor';
 import { SnippetList } from './components/SnippetList';
 import { ThemeToggle } from './components/ThemeToggle';
-
-type Language = 'skript' | 'javascript' | 'html';
+import { LanguageSelector } from './components/LanguageSelector';
 
 function App() {
-  const [selectedLanguage, setSelectedLanguage] = useState<Language>('javascript');
+  const [selectedLanguage, setSelectedLanguage] = useState<string>('JavaScript');
   const [code, setCode] = useState('');
   const [title, setTitle] = useState('');
   const [snippets, setSnippets] = useState<CodeSnippet[]>([]);
@@ -92,13 +91,44 @@ function App() {
   };
 
   const getPlaceholder = () => {
-    switch (selectedLanguage) {
-      case 'skript':
-        return '# Write your Skript code here...\non load:\n    broadcast "Hello World!"';
-      case 'javascript':
-        return '// Write your JavaScript code here...\nconsole.log("Hello World!");';
-      case 'html':
-        return '<!-- Write your HTML code here... -->\n<!DOCTYPE html>\n<html>\n<head>\n    <title>My Page</title>\n</head>\n<body>\n    <h1>Hello World!</h1>\n</body>\n</html>';
+    const lang = selectedLanguage.toLowerCase();
+
+    if (lang.includes('python')) {
+      return '# Write your Python code here...\nprint("Hello World!")';
+    } else if (lang.includes('java') && !lang.includes('script')) {
+      return '// Write your Java code here...\npublic class Main {\n    public static void main(String[] args) {\n        System.out.println("Hello World!");\n    }\n}';
+    } else if (lang.includes('javascript') || lang === 'js') {
+      return '// Write your JavaScript code here...\nconsole.log("Hello World!");';
+    } else if (lang.includes('typescript') || lang === 'ts') {
+      return '// Write your TypeScript code here...\nconst message: string = "Hello World!";\nconsole.log(message);';
+    } else if (lang.includes('html')) {
+      return '<!-- Write your HTML code here... -->\n<!DOCTYPE html>\n<html>\n<head>\n    <title>My Page</title>\n</head>\n<body>\n    <h1>Hello World!</h1>\n</body>\n</html>';
+    } else if (lang.includes('css')) {
+      return '/* Write your CSS code here... */\nbody {\n    font-family: sans-serif;\n    margin: 0;\n    padding: 20px;\n}';
+    } else if (lang.includes('c++') || lang === 'cpp') {
+      return '// Write your C++ code here...\n#include <iostream>\n\nint main() {\n    std::cout << "Hello World!" << std::endl;\n    return 0;\n}';
+    } else if (lang.includes('c#') || lang.includes('csharp')) {
+      return '// Write your C# code here...\nusing System;\n\nclass Program {\n    static void Main() {\n        Console.WriteLine("Hello World!");\n    }\n}';
+    } else if (lang.includes('rust')) {
+      return '// Write your Rust code here...\nfn main() {\n    println!("Hello World!");\n}';
+    } else if (lang.includes('go')) {
+      return '// Write your Go code here...\npackage main\n\nimport "fmt"\n\nfunc main() {\n    fmt.Println("Hello World!")\n}';
+    } else if (lang.includes('ruby')) {
+      return '# Write your Ruby code here...\nputs "Hello World!"';
+    } else if (lang.includes('php')) {
+      return '<?php\n// Write your PHP code here...\necho "Hello World!";\n?>';
+    } else if (lang.includes('swift')) {
+      return '// Write your Swift code here...\nimport Foundation\n\nprint("Hello World!")';
+    } else if (lang.includes('kotlin')) {
+      return '// Write your Kotlin code here...\nfun main() {\n    println("Hello World!")\n}';
+    } else if (lang.includes('skript')) {
+      return '# Write your Skript code here...\non load:\n    broadcast "Hello World!"';
+    } else if (lang.includes('sql')) {
+      return '-- Write your SQL code here...\nSELECT * FROM users WHERE active = true;';
+    } else if (lang.includes('bash') || lang.includes('shell')) {
+      return '#!/bin/bash\n# Write your Bash code here...\necho "Hello World!"';
+    } else {
+      return `// Write your ${selectedLanguage} code here...\n`;
     }
   };
 
@@ -175,37 +205,14 @@ function App() {
                 />
               </div>
 
-              <div className="flex gap-2 mb-4">
-                <button
-                  onClick={() => setSelectedLanguage('skript')}
-                  className={`px-4 py-2 rounded-lg font-medium transition-all ${
-                    selectedLanguage === 'skript'
-                      ? 'bg-amber-500 text-white shadow-[var(--shadow-md)]'
-                      : 'bg-[rgb(var(--bg-tertiary))] text-[rgb(var(--text-primary))] hover:bg-[rgb(var(--border-primary))]'
-                  }`}
-                >
-                  Skript
-                </button>
-                <button
-                  onClick={() => setSelectedLanguage('javascript')}
-                  className={`px-4 py-2 rounded-lg font-medium transition-all ${
-                    selectedLanguage === 'javascript'
-                      ? 'bg-yellow-400 text-gray-900 shadow-[var(--shadow-md)]'
-                      : 'bg-[rgb(var(--bg-tertiary))] text-[rgb(var(--text-primary))] hover:bg-[rgb(var(--border-primary))]'
-                  }`}
-                >
-                  JavaScript
-                </button>
-                <button
-                  onClick={() => setSelectedLanguage('html')}
-                  className={`px-4 py-2 rounded-lg font-medium transition-all ${
-                    selectedLanguage === 'html'
-                      ? 'bg-orange-500 text-white shadow-[var(--shadow-md)]'
-                      : 'bg-[rgb(var(--bg-tertiary))] text-[rgb(var(--text-primary))] hover:bg-[rgb(var(--border-primary))]'
-                  }`}
-                >
-                  HTML
-                </button>
+              <div className="mb-4">
+                <label className="block text-sm font-medium text-[rgb(var(--text-secondary))] mb-2">
+                  Language
+                </label>
+                <LanguageSelector
+                  selectedLanguage={selectedLanguage}
+                  onLanguageChange={setSelectedLanguage}
+                />
               </div>
 
               <div className="h-[calc(100vh-20rem)]">
