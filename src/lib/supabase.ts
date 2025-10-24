@@ -10,6 +10,17 @@ export interface CodeSnippet {
   title: string;
   language: string;
   code: string;
+  user_id: string;
+  is_public: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface Profile {
+  id: string;
+  email: string;
+  full_name: string;
+  role: 'admin' | 'editor' | 'viewer';
   created_at: string;
   updated_at: string;
 }

@@ -1,23 +1,31 @@
 import { useState, useEffect } from 'react';
-import { Code2, Save, Plus, FileCode } from 'lucide-react';
+import { Code2, Save, Plus, FileCode, LogIn, Lock, Eye, EyeOff } from 'lucide-react';
 import { supabase, CodeSnippet } from './lib/supabase';
-import { CodeEditor } from './components/CodeEditor';
+import { SyntaxHighlightedEditor } from './components/SyntaxHighlightedEditor';
 import { SnippetList } from './components/SnippetList';
 import { ThemeToggle } from './components/ThemeToggle';
 import { LanguageSelector } from './components/LanguageSelector';
+import { AuthModal } from './components/AuthModal';
+import { UserMenu } from './components/UserMenu';
+import { useAuth } from './contexts/AuthContext';
 
 function App() {
+  const { user, hasPermission, loading: authLoading } = useAuth();
   const [selectedLanguage, setSelectedLanguage] = useState<string>('JavaScript');
   const [code, setCode] = useState('');
   const [title, setTitle] = useState('');
+  const [isPublic, setIsPublic] = useState(true);
   const [snippets, setSnippets] = useState<CodeSnippet[]>([]);
   const [selectedSnippet, setSelectedSnippet] = useState<CodeSnippet | null>(null);
   const [isSaving, setIsSaving] = useState(false);
   const [showSidebar, setShowSidebar] = useState(true);
+  const [showAuthModal, setShowAuthModal] = useState(false);
 
   useEffect(() => {
-    loadSnippets();
-  }, []);
+    if (!authLoading) {
+      loadSnippets();
+    }
+  }, [authLoading, user]);
 
   const loadSnippets = async () => {
     const { data, error } = await supabase
@@ -48,12 +56,15 @@ function App() {
           await loadSnippets();
         }
       } else {
+        if (!user) return;
         const { error } = await supabase
           .from('code_snippets')
           .insert({
             title: title || 'Untitled',
             code,
             language: selectedLanguage,
+            user_id: user.id,
+            is_public: isPublic,
           });
 
         if (!error) {
@@ -71,6 +82,7 @@ function App() {
     setSelectedSnippet(null);
     setTitle('');
     setCode('');
+    setIsPublic(true);
   };
 
   const handleSelectSnippet = (snippet: CodeSnippet) => {
@@ -78,6 +90,7 @@ function App() {
     setTitle(snippet.title);
     setCode(snippet.code);
     setSelectedLanguage(snippet.language);
+    setIsPublic(snippet.is_public);
   };
 
   const handleDelete = async (id: string) => {
@@ -148,6 +161,17 @@ function App() {
             </div>
             <div className="flex items-center gap-3">
               <ThemeToggle />
+              {user ? (
+                <UserMenu />
+              ) : (
+                <button
+                  onClick={() => setShowAuthModal(true)}
+                  className="flex items-center gap-2 px-4 py-2 bg-[rgb(var(--accent-primary))] hover:bg-[rgb(var(--accent-hover))] text-white rounded-lg font-medium transition-colors"
+                >
+                  <LogIn className="w-4 h-4" />
+                  Sign In
+                </button>
+              )}
               <button
                 onClick={() => setShowSidebar(!showSidebar)}
                 className="px-4 py-2 text-[rgb(var(--text-primary))] hover:bg-[rgb(var(--bg-tertiary))] rounded-lg transition-colors flex items-center gap-2"
@@ -162,14 +186,16 @@ function App() {
                 <Plus className="w-4 h-4" />
                 New
               </button>
-              <button
-                onClick={handleSave}
-                disabled={isSaving}
-                className="px-4 py-2 bg-[rgb(var(--accent-primary))] hover:bg-[rgb(var(--accent-hover))] text-white rounded-lg transition-colors flex items-center gap-2 font-medium disabled:opacity-50"
-              >
-                <Save className="w-4 h-4" />
-                {isSaving ? 'Saving...' : 'Save'}
-              </button>
+              {user && hasPermission('snippets', 'create') && (
+                <button
+                  onClick={handleSave}
+                  disabled={isSaving}
+                  className="px-4 py-2 bg-[rgb(var(--accent-primary))] hover:bg-[rgb(var(--accent-hover))] text-white rounded-lg transition-colors flex items-center gap-2 font-medium disabled:opacity-50"
+                >
+                  <Save className="w-4 h-4" />
+                  {isSaving ? 'Saving...' : 'Save'}
+                </button>
+              )}
             </div>
           </div>
         </div>
@@ -205,28 +231,70 @@ function App() {
                 />
               </div>
 
-              <div className="mb-4">
-                <label className="block text-sm font-medium text-[rgb(var(--text-secondary))] mb-2">
-                  Language
-                </label>
-                <LanguageSelector
-                  selectedLanguage={selectedLanguage}
-                  onLanguageChange={setSelectedLanguage}
-                />
+              <div className="flex gap-4 mb-4">
+                <div className="flex-1">
+                  <label className="block text-sm font-medium text-[rgb(var(--text-secondary))] mb-2">
+                    Language
+                  </label>
+                  <LanguageSelector
+                    selectedLanguage={selectedLanguage}
+                    onLanguageChange={setSelectedLanguage}
+                  />
+                </div>
+                {user && hasPermission('snippets', 'create') && (
+                  <div>
+                    <label className="block text-sm font-medium text-[rgb(var(--text-secondary))] mb-2">
+                      Visibility
+                    </label>
+                    <button
+                      onClick={() => setIsPublic(!isPublic)}
+                      className={`flex items-center gap-2 px-4 py-2 rounded-lg font-medium transition-all ${
+                        isPublic
+                          ? 'bg-green-500 text-white'
+                          : 'bg-gray-500 text-white'
+                      }`}
+                    >
+                      {isPublic ? <Eye className="w-4 h-4" /> : <EyeOff className="w-4 h-4" />}
+                      {isPublic ? 'Public' : 'Private'}
+                    </button>
+                  </div>
+                )}
               </div>
 
-              <div className="h-[calc(100vh-20rem)]">
-                <CodeEditor
-                  value={code}
-                  onChange={setCode}
-                  language={selectedLanguage}
-                  placeholder={getPlaceholder()}
-                />
-              </div>
+              {user ? (
+                <div className="h-[calc(100vh-24rem)]">
+                  <SyntaxHighlightedEditor
+                    value={code}
+                    onChange={setCode}
+                    language={selectedLanguage}
+                    placeholder={getPlaceholder()}
+                  />
+                </div>
+              ) : (
+                <div className="h-[calc(100vh-24rem)] bg-[rgb(var(--bg-code))] rounded-lg flex items-center justify-center">
+                  <div className="text-center">
+                    <Lock className="w-16 h-16 mx-auto mb-4 text-[rgb(var(--text-tertiary))]" />
+                    <h3 className="text-xl font-semibold text-[rgb(var(--text-primary))] mb-2">
+                      Sign in to start coding
+                    </h3>
+                    <p className="text-[rgb(var(--text-secondary))] mb-6">
+                      Create an account to save and manage your code snippets
+                    </p>
+                    <button
+                      onClick={() => setShowAuthModal(true)}
+                      className="px-6 py-3 bg-[rgb(var(--accent-primary))] hover:bg-[rgb(var(--accent-hover))] text-white rounded-lg font-medium transition-colors"
+                    >
+                      Get Started
+                    </button>
+                  </div>
+                </div>
+              )}
             </div>
           </div>
         </div>
       </div>
+
+      <AuthModal isOpen={showAuthModal} onClose={() => setShowAuthModal(false)} />
     </div>
   );
 }
