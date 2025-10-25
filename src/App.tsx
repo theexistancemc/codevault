@@ -10,7 +10,7 @@ import { UserMenu } from './components/UserMenu';
 import { useAuth } from './contexts/AuthContext';
 
 function App() {
-  const { user, hasPermission, loading: authLoading } = useAuth();
+  const { user, profile, hasPermission, loading: authLoading } = useAuth();
   const [selectedLanguage, setSelectedLanguage] = useState<string>('JavaScript');
   const [code, setCode] = useState('');
   const [title, setTitle] = useState('');
@@ -39,21 +39,32 @@ function App() {
   };
 
   const handleSave = async () => {
+    if (!user) return;
+
     setIsSaving(true);
     try {
       if (selectedSnippet) {
+        if (selectedSnippet.user_id !== user.id) {
+          alert('You can only edit your own snippets');
+          setIsSaving(false);
+          return;
+        }
+
         const { error } = await supabase
           .from('code_snippets')
           .update({
             title: title || 'Untitled',
             code,
             language: selectedLanguage,
+            is_public: isPublic,
             updated_at: new Date().toISOString(),
           })
           .eq('id', selectedSnippet.id);
 
         if (!error) {
           await loadSnippets();
+        } else {
+          alert('Failed to update snippet: ' + error.message);
         }
       } else {
         if (!user) return;
@@ -91,6 +102,12 @@ function App() {
     setCode(snippet.code);
     setSelectedLanguage(snippet.language);
     setIsPublic(snippet.is_public);
+  };
+
+  const canEditSnippet = (snippet: CodeSnippet | null): boolean => {
+    if (!user || !snippet) return false;
+    if (profile?.role === 'admin') return true;
+    return snippet.user_id === user.id;
   };
 
   const handleDelete = async (id: string) => {
@@ -186,7 +203,7 @@ function App() {
                 <Plus className="w-4 h-4" />
                 New
               </button>
-              {user && hasPermission('snippets', 'create') && (
+              {user && hasPermission('snippets', 'create') && (!selectedSnippet || canEditSnippet(selectedSnippet)) && (
                 <button
                   onClick={handleSave}
                   disabled={isSaving}
@@ -225,9 +242,14 @@ function App() {
                 <input
                   type="text"
                   value={title}
-                  onChange={(e) => setTitle(e.target.value)}
+                  onChange={(e) => {
+                    if (!selectedSnippet || canEditSnippet(selectedSnippet)) {
+                      setTitle(e.target.value);
+                    }
+                  }}
                   placeholder="Snippet title..."
-                  className="w-full px-4 py-2 text-lg font-medium border border-[rgb(var(--border-secondary))] bg-[rgb(var(--bg-primary))] text-[rgb(var(--text-primary))] placeholder:text-[rgb(var(--text-tertiary))] rounded-lg focus:outline-none focus:ring-2 focus:ring-[rgb(var(--accent-primary))]"
+                  disabled={selectedSnippet ? !canEditSnippet(selectedSnippet) : false}
+                  className="w-full px-4 py-2 text-lg font-medium border border-[rgb(var(--border-secondary))] bg-[rgb(var(--bg-primary))] text-[rgb(var(--text-primary))] placeholder:text-[rgb(var(--text-tertiary))] rounded-lg focus:outline-none focus:ring-2 focus:ring-[rgb(var(--accent-primary))] disabled:opacity-50 disabled:cursor-not-allowed"
                 />
               </div>
 
@@ -265,10 +287,21 @@ function App() {
                 <div className="h-[calc(100vh-24rem)]">
                   <SyntaxHighlightedEditor
                     value={code}
-                    onChange={setCode}
+                    onChange={(value) => {
+                      if (!selectedSnippet || canEditSnippet(selectedSnippet)) {
+                        setCode(value);
+                      }
+                    }}
                     language={selectedLanguage}
                     placeholder={getPlaceholder()}
                   />
+                  {selectedSnippet && !canEditSnippet(selectedSnippet) && (
+                    <div className="mt-2 p-3 bg-yellow-100 dark:bg-yellow-900/30 border border-yellow-300 dark:border-yellow-700 rounded-lg">
+                      <p className="text-sm text-yellow-800 dark:text-yellow-300">
+                        This is a read-only snippet. You can only edit your own snippets.
+                      </p>
+                    </div>
+                  )}
                 </div>
               ) : (
                 <div className="h-[calc(100vh-24rem)] bg-[rgb(var(--bg-code))] rounded-lg flex items-center justify-center">

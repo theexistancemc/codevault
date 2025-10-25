@@ -54,16 +54,28 @@
 
 .syntax-editor {
   background: transparent !important;
+  overflow: auto !important;
+  max-height: 100%;
 }
 
 .syntax-editor textarea {
-  color: rgb(var(--text-code)) !important;
-  caret-color: rgb(var(--text-code)) !important;
+  color: #e4e4e7 !important;
+  caret-color: #e4e4e7 !important;
+  outline: none !important;
+}
+
+.syntax-editor textarea::placeholder {
+  color: #71717a !important;
 }
 
 .syntax-editor pre {
   margin: 0 !important;
   background: transparent !important;
+  color: #e4e4e7 !important;
+}
+
+.syntax-editor pre code {
+  color: #e4e4e7 !important;
 }
 
 .token.comment,
