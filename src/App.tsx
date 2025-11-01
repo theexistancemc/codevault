@@ -7,6 +7,7 @@ import { ThemeToggle } from './components/ThemeToggle';
 import { LanguageSelector } from './components/LanguageSelector';
 import { AuthModal } from './components/AuthModal';
 import { UserMenu } from './components/UserMenu';
+import { MembersPage } from './components/MembersPage';
 import { useAuth } from './contexts/AuthContext';
 
 function App() {
@@ -20,6 +21,7 @@ function App() {
   const [isSaving, setIsSaving] = useState(false);
   const [showSidebar, setShowSidebar] = useState(true);
   const [showAuthModal, setShowAuthModal] = useState(false);
+  const [showMembersPage, setShowMembersPage] = useState(false);
 
   useEffect(() => {
     if (!authLoading) {
@@ -110,6 +112,20 @@ function App() {
     return snippet.user_id === user.id;
   };
 
+  if (showMembersPage && profile?.role === 'admin') {
+    return (
+      <div>
+        <MembersPage />
+        <button
+          onClick={() => setShowMembersPage(false)}
+          className="fixed bottom-6 right-6 px-4 py-2 bg-[rgb(var(--accent-primary))] hover:bg-[rgb(var(--accent-hover))] text-white rounded-lg font-medium transition-colors"
+        >
+          Back to Editor
+        </button>
+      </div>
+    );
+  }
+
   const handleDelete = async (id: string) => {
     if (confirm('Are you sure you want to delete this snippet?')) {
       await supabase.from('code_snippets').delete().eq('id', id);
@@ -179,7 +195,7 @@ function App() {
             <div className="flex items-center gap-3">
               <ThemeToggle />
               {user ? (
-                <UserMenu />
+                <UserMenu onOpenMembers={() => setShowMembersPage(true)} />
               ) : (
                 <button
                   onClick={() => setShowAuthModal(true)}

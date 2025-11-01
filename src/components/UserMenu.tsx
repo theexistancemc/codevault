@@ -1,8 +1,12 @@
 import { useState, useRef, useEffect } from 'react';
-import { User, LogOut, Shield, ChevronDown } from 'lucide-react';
+import { User, LogOut, Shield, ChevronDown, Users as UsersIcon } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 
-export function UserMenu() {
+interface UserMenuProps {
+  onOpenMembers?: () => void;
+}
+
+export function UserMenu({ onOpenMembers }: UserMenuProps) {
   const [isOpen, setIsOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
   const { user, profile, signOut } = useAuth();
@@ -78,7 +82,19 @@ export function UserMenu() {
             </div>
           </div>
 
-          <div className="p-2">
+          <div className="p-2 space-y-1">
+            {profile.role === 'admin' && (
+              <button
+                onClick={() => {
+                  onOpenMembers?.();
+                  setIsOpen(false);
+                }}
+                className="w-full flex items-center gap-3 px-4 py-2 hover:bg-[rgb(var(--bg-tertiary))] rounded-lg transition-colors text-[rgb(var(--text-primary))]"
+              >
+                <UsersIcon className="w-4 h-4" />
+                <span>Members</span>
+              </button>
+            )}
             <button
               onClick={() => {
                 signOut();
