@@ -90,6 +90,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (!profile) return false;
 
     const rolePermissions: Record<string, Record<string, string[]>> = {
+      owner: {
+        snippets: ['create', 'read', 'update', 'delete'],
+        users: ['create', 'read', 'update', 'delete'],
+        settings: ['manage'],
+      },
+      coowner: {
+        snippets: ['create', 'read', 'update', 'delete'],
+        users: ['create', 'read', 'update', 'delete'],
+        settings: ['manage'],
+      },
       admin: {
         snippets: ['create', 'read', 'update', 'delete'],
         users: ['create', 'read', 'update', 'delete'],
