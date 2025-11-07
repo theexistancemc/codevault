@@ -20,7 +20,7 @@ export interface Profile {
   id: string;
   email: string;
   full_name: string;
-  role: 'admin' | 'editor' | 'viewer';
+  role: 'owner | coowner | admin' | 'editor' | 'viewer';
   created_at: string;
   updated_at: string;
 }
