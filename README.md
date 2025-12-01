@@ -35,6 +35,10 @@ Import required modules into your project as needed. Code organization and API d
 
 ### Code Visibilty
 ![Codevault visibility](assests/vis.png)
+![Codevault visibility](assests/visp.png)
+
+### Desktop Admin preview
+![Codevault Desktop preview](assests/adminpage.png)
 
 ### Desktop preview
 ![Codevault Desktop preview](assests/preview.png)
