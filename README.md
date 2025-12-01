@@ -28,7 +28,16 @@ Note: If the repository has additional setup steps, refer to the /docs or /Readm
 
 ## Usage:
 Import required modules into your project as needed. Code organization and API documentation will be found in the code structure itself or in the /docs directory.
+## Screenshots
 
+### Homepage
+![Codevault homepage](Screenshot 2025-12-01 160638.png)
+
+### Code Library View
+![Codevault code library](assets/code-page.png)
+
+### Mobile Layout
+![Codevault mobile view](assets/mobile-view.png)
 ## Development
 Built mainly with TypeScript (89%)
 
