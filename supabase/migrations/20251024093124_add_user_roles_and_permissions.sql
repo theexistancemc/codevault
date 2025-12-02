@@ -188,6 +188,15 @@ CREATE TRIGGER on_auth_user_created
 
 -- Insert default permissions
 INSERT INTO permissions (role, resource, action) VALUES
+  ('owner', 'snippets', 'create'),
+  ('owner', 'snippets', 'read'),
+  ('owner', 'snippets', 'update'),
+  ('owner', 'snippets', 'delete'),
+  ('owner', 'users', 'create'),
+  ('owner', 'users', 'read'),
+  ('owner', 'users', 'update'),
+  ('owner', 'users', 'delete'),
+  ('owner', 'settings', 'manage')
   ('admin', 'snippets', 'create'),
   ('admin', 'snippets', 'read'),
   ('admin', 'snippets', 'update'),

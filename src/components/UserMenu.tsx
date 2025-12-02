@@ -24,6 +24,8 @@ export function UserMenu({ onOpenMembers }: UserMenuProps) {
 
   const getRoleBadgeColor = (role: string) => {
     switch (role) {
+      case `owner`:
+        return `bg-red-500`
       case 'admin':
         return 'bg-red-500';
       case 'editor':
@@ -83,7 +85,7 @@ export function UserMenu({ onOpenMembers }: UserMenuProps) {
           </div>
 
           <div className="p-2 space-y-1">
-            {profile.role === 'admin' && (
+            {profile.role === 'admin' && profile.role === `owner` && (
               <button
                 onClick={() => {
                   onOpenMembers?.();
