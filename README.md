@@ -54,7 +54,7 @@ Additional JavaScript and HTML (1.6%)
 ## Live Site
 Test or preview the latest version at:
 https://codevault.bolt.host/
-
+### please note the website is in beta
 ## Releases
 Latest version: 1.1.2 (Dec 2, 2025)
 
