@@ -56,7 +56,7 @@ Test or preview the latest version at:
 https://codevault.bolt.host/
 
 ## Releases
-Latest version: 1.1.1 (Dec 1, 2025)
+Latest version: 1.1.2 (Dec 2, 2025)
 
 See Releases for more.
 
