@@ -24,6 +24,7 @@ export function UserMenu({ onOpenMembers }: UserMenuProps) {
 
   const getRoleBadgeColor = (role: string) => {
     switch (role) {
+      case 'owner':
       case 'admin':
         return 'bg-red-500';
       case 'editor':
@@ -33,6 +34,10 @@ export function UserMenu({ onOpenMembers }: UserMenuProps) {
       default:
         return 'bg-gray-500';
     }
+  };
+
+  const isAdminOrOwner = (role: string): role is 'admin' | 'owner' => {
+    return role === 'admin' || role === 'owner';
   };
 
   if (!user || !profile) return null;
@@ -83,7 +88,7 @@ export function UserMenu({ onOpenMembers }: UserMenuProps) {
           </div>
 
           <div className="p-2 space-y-1">
-            {profile.role === 'admin' && (
+            {isAdminOrOwner(profile.role) && (
               <button
                 onClick={() => {
                   onOpenMembers?.();
