@@ -1,4 +1,4 @@
-# codevault
+# codevault V2
 codevault is a shared library and codebase designed for website development and technology projects. Its aim is to streamline and organize reusable code, serving as a resource for web developers and project collaborators.
 
 ## Features
@@ -56,7 +56,7 @@ Test or preview the latest version at:
 https://codevault.bolt.host/
 ### please note the website is in beta
 ## Releases
-Latest version: 1.1.2 (Dec 2, 2025)
+Latest version: 2.0.0 (Dec 3, 2025)
 
 See Releases for more.
 
