@@ -437,6 +437,7 @@ export function MembersPage() {
                 <option value="viewer">Viewer</option>
                 <option value="editor">Editor</option>
                 <option value="admin">Admin</option>
+                <option value="admin">Owner</option>
               </select>
               <div className="flex gap-2">
                 <button
