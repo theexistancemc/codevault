@@ -32,8 +32,6 @@ export function ToastProvider({ children }: { children: ReactNode }) {
   const showToast = useCallback((message: string, variant: ToastVariant = 'info') => {
     const id = Date.now();
     setToasts((prev) => [...prev, { id, message, variant }]);
-
-    // auto‑dismiss
     setTimeout(() => {
       setToasts((prev) => prev.filter((t) => t.id !== id));
     }, 3000);
@@ -48,22 +46,15 @@ export function ToastProvider({ children }: { children: ReactNode }) {
         aria-atomic="true"
       >
         <div className="flex flex-col gap-2 w-full max-w-sm px-4">
-          {toasts.map((toast) => {
-            const base =
-              'pointer-events-auto rounded-lg px-4 py-3 text-sm shadow-lg border flex items-start gap-2';
-            const styles =
-              toast.variant === 'success'
-                ? 'bg-emerald-600 text-white border-emerald-500'
-                : toast.variant === 'error'
-                ? 'bg-red-600 text-white border-red-500'
-                : 'bg-slate-800 text-white border-slate-700';
-
-            return (
-              <div key={toast.id} className={`${base} ${styles}`}>
-                <span>{toast.message}</span>
-              </div>
-            );
-          })}
+          {toasts.map((toast) => (
+            <div
+              key={toast.id}
+              className="pointer-events-auto rounded-lg px-4 py-3 text-sm shadow-lg border flex items-start gap-2
+              bg-slate-800 text-white border-slate-700"
+            >
+              <span>{toast.message}</span>
+            </div>
+          ))}
         </div>
       </div>
     </ToastContext.Provider>
