@@ -45,7 +45,7 @@ export function MembersPage() {
   const [memberBadges, setMemberBadges] = useState<UserBadge[]>([]);
 
   useEffect(() => {
-    if (profile?.role === 'admin') {
+    if (profile?.role === 'admin' && profile?.role === 'owner') {
       loadMembers();
       loadCustomRoles();
     }
