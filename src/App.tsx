@@ -227,7 +227,7 @@ function App() {
               </div>
               <div>
                 <h1 className="text-2xl font-bold text-[rgb(var(--text-primary))]">
-                  CodeVault
+                  CodeVault V2-Beta
                 </h1>
                 <p className="text-sm text-[rgb(var(--text-secondary))]">
                   Your multi-language code editor
