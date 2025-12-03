@@ -13,6 +13,8 @@ import {
 } from 'lucide-react';
 
 type AppRole = 'owner' | 'admin' | 'editor' | 'viewer';
+type PermissionAction = 'read' | 'create' | 'update' | 'delete';
+type PermissionMap = Record<string, PermissionAction[]>;
 
 interface ExtendedProfile extends Profile {
   is_banned?: boolean;
@@ -27,6 +29,7 @@ interface CustomRole {
   name: string;
   color: string;
   description: string;
+  permissions: PermissionMap;
 }
 
 interface UserBadge {
@@ -35,6 +38,14 @@ interface UserBadge {
   badge_color: string;
   badge_icon: string;
 }
+
+const PERMISSION_RESOURCES: string[] = ['snippets', 'users'];
+const PERMISSION_ACTIONS: PermissionAction[] = [
+  'read',
+  'create',
+  'update',
+  'delete',
+];
 
 const getRoleColor = (role: AppRole) => {
   switch (role) {
@@ -78,6 +89,12 @@ export function MembersPage() {
   const [newRoleColor, setNewRoleColor] = useState('#3b82f6');
   const [newRoleDescription, setNewRoleDescription] = useState('');
 
+  // Custom role permissions editing
+  const [editingRole, setEditingRole] = useState<CustomRole | null>(null);
+  const [editingPermissions, setEditingPermissions] = useState<PermissionMap>(
+    {}
+  );
+
   const isAdmin =
     profile?.role === 'admin' || profile?.role === 'owner';
 
@@ -114,8 +131,9 @@ export function MembersPage() {
 
     if (!error && data) {
       setCustomRoles(data as CustomRole[]);
+    } else if (error) {
+      showToast('Failed to load custom roles', 'error');
     }
-    // you can optionally toast on error here
   };
 
   const loadMemberBadges = async (memberId: string) => {
@@ -243,13 +261,18 @@ export function MembersPage() {
   const handleCreateCustomRole = async () => {
     if (!user || !newRoleName.trim()) return;
 
+    const basePermissions: PermissionMap = {
+      snippets: ['read', 'create'],
+      users: ['read'],
+    };
+
     const { error } = await supabase
       .from('custom_roles')
       .insert({
         name: newRoleName.trim(),
         color: newRoleColor,
         description: newRoleDescription.trim(),
-        permissions: { snippets: ['read', 'create'], users: ['read'] },
+        permissions: basePermissions,
         created_by: user.id,
       });
 
@@ -262,6 +285,44 @@ export function MembersPage() {
       showToast('Custom role created successfully', 'success');
     } else {
       showToast('Failed to create role', 'error');
+    }
+  };
+
+  // Custom role permissions editing
+
+  const handleEditRolePermissions = (role: CustomRole) => {
+    setEditingRole(role);
+    setEditingPermissions(role.permissions || {});
+  };
+
+  const togglePermission = (resource: string, action: PermissionAction) => {
+    setEditingPermissions((prev) => {
+      const current = prev[resource] || [];
+      const has = current.includes(action);
+      const next = has
+        ? current.filter((a) => a !== action)
+        : [...current, action];
+      return {
+        ...prev,
+        [resource]: next,
+      };
+    });
+  };
+
+  const handleSaveRolePermissions = async () => {
+    if (!editingRole) return;
+
+    const { error } = await supabase
+      .from('custom_roles')
+      .update({ permissions: editingPermissions })
+      .eq('id', editingRole.id);
+
+    if (!error) {
+      showToast('Permissions updated', 'success');
+      await loadCustomRoles();
+      setEditingRole(null);
+    } else {
+      showToast('Failed to update permissions', 'error');
     }
   };
 
@@ -291,7 +352,7 @@ export function MembersPage() {
               Members Management
             </h1>
             <p className="text-sm text-[rgb(var(--text-secondary))] mt-1">
-              Manage roles, badges and bans for all site members.
+              Manage roles, custom roles, badges and bans for all site members.
             </p>
           </div>
           <button
@@ -302,6 +363,34 @@ export function MembersPage() {
             <Plus className="w-4 h-4" />
             Create Custom Role
           </button>
+        </div>
+
+        {/* Custom roles list */}
+        <div className="bg-[rgb(var(--bg-secondary))] rounded-lg border border-[rgb(var(--border-primary))] p-4">
+          <div className="flex items-center justify-between mb-3">
+            <h2 className="text-sm font-semibold text-[rgb(var(--text-primary))]">
+              Custom Roles
+            </h2>
+          </div>
+          {customRoles.length === 0 ? (
+            <p className="text-xs text-[rgb(var(--text-secondary))]">
+              No custom roles yet. Create one to define extra permissions.
+            </p>
+          ) : (
+            <div className="flex flex-wrap gap-2">
+              {customRoles.map((role) => (
+                <button
+                  key={role.id}
+                  type="button"
+                  onClick={() => handleEditRolePermissions(role)}
+                  className="px-3 py-1 rounded-full text-xs font-medium border border-[rgb(var(--border-secondary))] hover:bg-[rgb(var(--bg-tertiary))]"
+                  style={{ borderColor: role.color }}
+                >
+                  {role.name}
+                </button>
+              ))}
+            </div>
+          )}
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -327,7 +416,7 @@ export function MembersPage() {
                           Email
                         </th>
                         <th className="px-6 py-3 text-left font-semibold text-[rgb(var(--text-primary))]">
-                          Role
+                          Roles
                         </th>
                         <th className="px-6 py-3 text-left font-semibold text-[rgb(var(--text-primary))]">
                           Status
@@ -338,55 +427,73 @@ export function MembersPage() {
                       </tr>
                     </thead>
                     <tbody>
-                      {members.map((member, index) => (
-                        <tr
-                          key={member.id}
-                          className={`border-b border-[rgb(var(--border-secondary))] transition-colors ${
-                            index % 2 === 0
-                              ? 'bg-[rgb(var(--bg-secondary))]'
-                              : 'bg-[rgb(var(--bg-primary))]'
-                          } hover:bg-[rgb(var(--bg-tertiary))]`}
-                        >
-                          <td className="px-6 py-4">
-                            <p className="font-medium text-[rgb(var(--text-primary))]">
-                              {member.full_name || 'Unknown'}
-                            </p>
-                          </td>
-                          <td className="px-6 py-4">
-                            <p className="text-[rgb(var(--text-secondary))]">
-                              {member.email}
-                            </p>
-                          </td>
-                          <td className="px-6 py-4">
-                            <span
-                              className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium text-white"
-                              style={{ backgroundColor: getRoleColor(member.role) }}
-                            >
-                              {member.role}
-                            </span>
-                          </td>
-                          <td className="px-6 py-4">
-                            <span
-                              className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-medium ${
-                                member.is_banned
-                                  ? 'bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400'
-                                  : 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400'
-                              }`}
-                            >
-                              {member.is_banned ? 'Banned' : 'Active'}
-                            </span>
-                          </td>
-                          <td className="px-6 py-4">
-                            <button
-                              type="button"
-                              onClick={() => handleSelectMember(member)}
-                              className="text-[rgb(var(--accent-primary))] hover:underline text-sm font-medium"
-                            >
-                              Manage
-                            </button>
-                          </td>
-                        </tr>
-                      ))}
+                      {members.map((member, index) => {
+                        const memberCustomRole = customRoles.find(
+                          (r) => r.id === member.custom_role_id
+                        );
+
+                        return (
+                          <tr
+                            key={member.id}
+                            className={`border-b border-[rgb(var(--border-secondary))] transition-colors ${
+                              index % 2 === 0
+                                ? 'bg-[rgb(var(--bg-secondary))]'
+                                : 'bg-[rgb(var(--bg-primary))]'
+                            } hover:bg-[rgb(var(--bg-tertiary))]`}
+                          >
+                            <td className="px-6 py-4">
+                              <p className="font-medium text-[rgb(var(--text-primary))]">
+                                {member.full_name || 'Unknown'}
+                              </p>
+                            </td>
+                            <td className="px-6 py-4">
+                              <p className="text-[rgb(var(--text-secondary))]">
+                                {member.email}
+                              </p>
+                            </td>
+                            <td className="px-6 py-4">
+                              <div className="flex flex-col gap-1">
+                                <span
+                                  className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium text-white"
+                                  style={{
+                                    backgroundColor: getRoleColor(member.role),
+                                  }}
+                                >
+                                  {member.role}
+                                </span>
+                                {memberCustomRole && (
+                                  <span
+                                    className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-medium text-white"
+                                    style={{ backgroundColor: memberCustomRole.color }}
+                                  >
+                                    {memberCustomRole.name}
+                                  </span>
+                                )}
+                              </div>
+                            </td>
+                            <td className="px-6 py-4">
+                              <span
+                                className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-medium ${
+                                  member.is_banned
+                                    ? 'bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400'
+                                    : 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400'
+                                }`}
+                              >
+                                {member.is_banned ? 'Banned' : 'Active'}
+                              </span>
+                            </td>
+                            <td className="px-6 py-4">
+                              <button
+                                type="button"
+                                onClick={() => handleSelectMember(member)}
+                                className="text-[rgb(var(--accent-primary))] hover:underline text-sm font-medium"
+                              >
+                                Manage
+                              </button>
+                            </td>
+                          </tr>
+                        );
+                      })}
                     </tbody>
                   </table>
                 </div>
@@ -689,6 +796,62 @@ export function MembersPage() {
                   Cancel
                 </button>
               </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Edit Role Permissions Modal */}
+      {editingRole && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
+          <div className="bg-[rgb(var(--bg-secondary))] rounded-lg shadow-[var(--shadow-lg)] border border-[rgb(var(--border-primary))] p-6 max-w-md w-full mx-4">
+            <h3 className="text-xl font-bold text-[rgb(var(--text-primary))] mb-4">
+              Edit Permissions: {editingRole.name}
+            </h3>
+            <div className="space-y-4 text-sm">
+              {PERMISSION_RESOURCES.map((resource) => (
+                <div key={resource}>
+                  <p className="font-medium text-[rgb(var(--text-secondary))] mb-1 capitalize">
+                    {resource}
+                  </p>
+                  <div className="flex flex-wrap gap-2">
+                    {PERMISSION_ACTIONS.map((action) => {
+                      const checked =
+                        editingPermissions[resource]?.includes(action) ?? false;
+                      return (
+                        <button
+                          key={action}
+                          type="button"
+                          onClick={() => togglePermission(resource, action)}
+                          className={`px-2 py-1 rounded border text-xs ${
+                            checked
+                              ? 'bg-[rgb(var(--accent-primary))] text-white border-[rgb(var(--accent-primary))]'
+                              : 'bg-[rgb(var(--bg-tertiary))] text-[rgb(var(--text-secondary))] border-[rgb(var(--border-secondary))]'
+                          }`}
+                        >
+                          {action}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              ))}
+            </div>
+            <div className="flex gap-2 mt-6">
+              <button
+                type="button"
+                onClick={handleSaveRolePermissions}
+                className="flex-1 px-4 py-2 bg-[rgb(var(--accent-primary))] hover:bg-[rgb(var(--accent-hover))] text-white rounded-lg font-medium transition-colors text-sm"
+              >
+                Save
+              </button>
+              <button
+                type="button"
+                onClick={() => setEditingRole(null)}
+                className="flex-1 px-4 py-2 bg-[rgb(var(--bg-tertiary))] hover:bg-[rgb(var(--border-primary))] text-[rgb(var(--text-primary))] rounded-lg font-medium transition-colors text-sm"
+              >
+                Cancel
+              </button>
             </div>
           </div>
         </div>
