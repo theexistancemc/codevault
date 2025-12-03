@@ -1,13 +1,25 @@
 import { useState, useEffect } from 'react';
 import { supabase, Profile } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
-import { Users, Ban, Award, Shield, AlertCircle, X, Plus, Check } from 'lucide-react';
+import { useToast } from '../contexts/ToastContext';
+import {
+  Users,
+  Ban,
+  Award,
+  Shield,
+  AlertCircle,
+  X,
+  Plus,
+} from 'lucide-react';
+
+type AppRole = 'owner' | 'admin' | 'editor' | 'viewer';
 
 interface ExtendedProfile extends Profile {
   is_banned?: boolean;
   badges?: string[];
   custom_role_id?: string;
   last_login_at?: string;
+  role: AppRole;
 }
 
 interface CustomRole {
@@ -24,34 +36,63 @@ interface UserBadge {
   badge_icon: string;
 }
 
+const getRoleColor = (role: AppRole) => {
+  switch (role) {
+    case 'owner':
+      return '#7c3aed'; // purple
+    case 'admin':
+      return '#ef4444'; // red
+    case 'editor':
+      return '#3b82f6'; // blue
+    case 'viewer':
+    default:
+      return '#6b7280'; // gray
+  }
+};
+
 export function MembersPage() {
   const { user, profile } = useAuth();
+  const { showToast } = useToast();
+
   const [members, setMembers] = useState<ExtendedProfile[]>([]);
   const [customRoles, setCustomRoles] = useState<CustomRole[]>([]);
   const [loading, setLoading] = useState(true);
-  const [selectedMember, setSelectedMember] = useState<ExtendedProfile | null>(null);
+
+  const [selectedMember, setSelectedMember] = useState<ExtendedProfile | null>(
+    null
+  );
+  const [memberBadges, setMemberBadges] = useState<UserBadge[]>([]);
+
   const [showRoleModal, setShowRoleModal] = useState(false);
   const [showBadgeModal, setShowBadgeModal] = useState(false);
   const [showBanModal, setShowBanModal] = useState(false);
-  const [newRole, setNewRole] = useState<string>('editor');
+  const [showCreateRoleModal, setShowCreateRoleModal] = useState(false);
+
+  const [newRole, setNewRole] = useState<AppRole>('editor');
   const [badgeName, setBadgeName] = useState('');
   const [badgeColor, setBadgeColor] = useState('#3b82f6');
   const [badgeIcon, setBadgeIcon] = useState('⭐');
   const [banReason, setBanReason] = useState('');
+
   const [newRoleName, setNewRoleName] = useState('');
   const [newRoleColor, setNewRoleColor] = useState('#3b82f6');
   const [newRoleDescription, setNewRoleDescription] = useState('');
-  const [showCreateRoleModal, setShowCreateRoleModal] = useState(false);
-  const [memberBadges, setMemberBadges] = useState<UserBadge[]>([]);
+
+  const isAdmin =
+    profile?.role === 'admin' || profile?.role === 'owner';
 
   useEffect(() => {
-    if (profile?.role === 'admin' && profile?.role === 'owner') {
-      loadMembers();
-      loadCustomRoles();
-    }
-  }, [profile]);
+    if (!isAdmin) return;
+
+    const init = async () => {
+      await Promise.all([loadMembers(), loadCustomRoles()]);
+    };
+
+    init();
+  }, [isAdmin]);
 
   const loadMembers = async () => {
+    setLoading(true);
     const { data, error } = await supabase
       .from('profiles')
       .select('*')
@@ -59,6 +100,8 @@ export function MembersPage() {
 
     if (!error && data) {
       setMembers(data as ExtendedProfile[]);
+    } else if (error) {
+      showToast('Failed to load members', 'error');
     }
     setLoading(false);
   };
@@ -72,6 +115,7 @@ export function MembersPage() {
     if (!error && data) {
       setCustomRoles(data as CustomRole[]);
     }
+    // you can optionally toast on error here
   };
 
   const loadMemberBadges = async (memberId: string) => {
@@ -82,6 +126,8 @@ export function MembersPage() {
 
     if (!error && data) {
       setMemberBadges(data as UserBadge[]);
+    } else {
+      setMemberBadges([]);
     }
   };
 
@@ -101,7 +147,9 @@ export function MembersPage() {
     if (!error) {
       await loadMembers();
       setShowRoleModal(false);
-      alert(`${selectedMember.full_name} role changed to ${newRole}`);
+      showToast(`${selectedMember.full_name} role changed to ${newRole}`, 'success');
+    } else {
+      showToast('Failed to change role', 'error');
     }
   };
 
@@ -112,7 +160,7 @@ export function MembersPage() {
       .from('banned_users')
       .insert({
         user_id: selectedMember.id,
-        reason: banReason,
+        reason: banReason.trim(),
         banned_by: user.id,
       });
 
@@ -125,7 +173,9 @@ export function MembersPage() {
       await loadMembers();
       setShowBanModal(false);
       setBanReason('');
-      alert(`${selectedMember.full_name} has been banned`);
+      showToast(`${selectedMember.full_name} has been banned`, 'success');
+    } else {
+      showToast('Failed to ban user', 'error');
     }
   };
 
@@ -144,7 +194,9 @@ export function MembersPage() {
         .eq('id', selectedMember.id);
 
       await loadMembers();
-      alert(`${selectedMember.full_name} has been unbanned`);
+      showToast(`${selectedMember.full_name} has been unbanned`, 'success');
+    } else {
+      showToast('Failed to unban user', 'error');
     }
   };
 
@@ -155,7 +207,7 @@ export function MembersPage() {
       .from('user_badges')
       .insert({
         user_id: selectedMember.id,
-        badge_name: badgeName,
+        badge_name: badgeName.trim(),
         badge_color: badgeColor,
         badge_icon: badgeIcon,
         issued_by: user.id,
@@ -166,18 +218,25 @@ export function MembersPage() {
       setBadgeName('');
       setBadgeColor('#3b82f6');
       setBadgeIcon('⭐');
-      alert('Badge added successfully');
+      showToast('Badge added successfully', 'success');
+    } else {
+      showToast('Failed to add badge', 'error');
     }
   };
 
   const handleRemoveBadge = async (badgeId: string) => {
+    if (!selectedMember) return;
+
     const { error } = await supabase
       .from('user_badges')
       .delete()
       .eq('id', badgeId);
 
     if (!error) {
-      await loadMemberBadges(selectedMember!.id);
+      await loadMemberBadges(selectedMember.id);
+      showToast('Badge removed', 'success');
+    } else {
+      showToast('Failed to remove badge', 'error');
     }
   };
 
@@ -187,9 +246,9 @@ export function MembersPage() {
     const { error } = await supabase
       .from('custom_roles')
       .insert({
-        name: newRoleName,
+        name: newRoleName.trim(),
         color: newRoleColor,
-        description: newRoleDescription,
+        description: newRoleDescription.trim(),
         permissions: { snippets: ['read', 'create'], users: ['read'] },
         created_by: user.id,
       });
@@ -200,16 +259,20 @@ export function MembersPage() {
       setNewRoleColor('#3b82f6');
       setNewRoleDescription('');
       setShowCreateRoleModal(false);
-      alert('Custom role created successfully');
+      showToast('Custom role created successfully', 'success');
+    } else {
+      showToast('Failed to create role', 'error');
     }
   };
 
-  if (profile?.role !== 'admin') {
+  if (!isAdmin) {
     return (
-      <div className="flex items-center justify-center h-screen">
-        <div className="text-center">
-          <AlertCircle className="w-16 h-16 mx-auto mb-4 text-red-500" />
-          <h2 className="text-2xl font-bold text-[rgb(var(--text-primary))]">Access Denied</h2>
+      <div className="flex items-center justify-center min-h-screen bg-[rgb(var(--bg-primary))]">
+        <div className="text-center bg-[rgb(var(--bg-secondary))] px-8 py-10 rounded-xl border border-[rgb(var(--border-primary))] shadow-[var(--shadow-lg)] max-w-md">
+          <AlertCircle className="w-14 h-14 mx-auto mb-4 text-red-500" />
+          <h2 className="text-2xl font-bold text-[rgb(var(--text-primary))]">
+            Access Denied
+          </h2>
           <p className="text-[rgb(var(--text-secondary))] mt-2">
             Only admins can access the members page.
           </p>
@@ -220,15 +283,21 @@ export function MembersPage() {
 
   return (
     <div className="min-h-screen bg-[rgb(var(--bg-primary))]">
-      <div className="max-w-7xl mx-auto px-6 py-8">
-        <div className="flex items-center justify-between mb-8">
-          <h1 className="flex items-center gap-3 text-3xl font-bold text-[rgb(var(--text-primary))]">
-            <Users className="w-8 h-8" />
-            Members Management
-          </h1>
+      <div className="max-w-7xl mx-auto px-6 py-8 space-y-6">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-2">
+          <div>
+            <h1 className="flex items-center gap-3 text-3xl font-bold text-[rgb(var(--text-primary))]">
+              <Users className="w-8 h-8" />
+              Members Management
+            </h1>
+            <p className="text-sm text-[rgb(var(--text-secondary))] mt-1">
+              Manage roles, badges and bans for all site members.
+            </p>
+          </div>
           <button
+            type="button"
             onClick={() => setShowCreateRoleModal(true)}
-            className="flex items-center gap-2 px-4 py-2 bg-[rgb(var(--accent-primary))] hover:bg-[rgb(var(--accent-hover))] text-white rounded-lg font-medium transition-colors"
+            className="inline-flex items-center justify-center gap-2 px-4 py-2 bg-[rgb(var(--accent-primary))] hover:bg-[rgb(var(--accent-hover))] text-white rounded-lg font-medium transition-colors text-sm shadow-sm"
           >
             <Plus className="w-4 h-4" />
             Create Custom Role
@@ -237,38 +306,46 @@ export function MembersPage() {
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           <div className="lg:col-span-2">
-            <div className="bg-[rgb(var(--bg-secondary))] rounded-lg border border-[rgb(var(--border-primary))] overflow-hidden">
+            <div className="bg-[rgb(var(--bg-secondary))] rounded-lg border border-[rgb(var(--border-primary))] overflow-hidden shadow-sm">
               {loading ? (
                 <div className="p-8 text-center text-[rgb(var(--text-secondary))]">
                   Loading members...
                 </div>
+              ) : members.length === 0 ? (
+                <div className="p-8 text-center text-[rgb(var(--text-secondary))]">
+                  No members found.
+                </div>
               ) : (
                 <div className="overflow-x-auto">
-                  <table className="w-full">
+                  <table className="w-full text-sm">
                     <thead className="bg-[rgb(var(--bg-tertiary))] border-b border-[rgb(var(--border-primary))]">
                       <tr>
-                        <th className="px-6 py-3 text-left text-sm font-semibold text-[rgb(var(--text-primary))]">
+                        <th className="px-6 py-3 text-left font-semibold text-[rgb(var(--text-primary))]">
                           Name
                         </th>
-                        <th className="px-6 py-3 text-left text-sm font-semibold text-[rgb(var(--text-primary))]">
+                        <th className="px-6 py-3 text-left font-semibold text-[rgb(var(--text-primary))]">
                           Email
                         </th>
-                        <th className="px-6 py-3 text-left text-sm font-semibold text-[rgb(var(--text-primary))]">
+                        <th className="px-6 py-3 text-left font-semibold text-[rgb(var(--text-primary))]">
                           Role
                         </th>
-                        <th className="px-6 py-3 text-left text-sm font-semibold text-[rgb(var(--text-primary))]">
+                        <th className="px-6 py-3 text-left font-semibold text-[rgb(var(--text-primary))]">
                           Status
                         </th>
-                        <th className="px-6 py-3 text-left text-sm font-semibold text-[rgb(var(--text-primary))]">
+                        <th className="px-6 py-3 text-left font-semibold text-[rgb(var(--text-primary))]">
                           Action
                         </th>
                       </tr>
                     </thead>
                     <tbody>
-                      {members.map((member) => (
+                      {members.map((member, index) => (
                         <tr
                           key={member.id}
-                          className="border-b border-[rgb(var(--border-secondary))] hover:bg-[rgb(var(--bg-tertiary))] transition-colors"
+                          className={`border-b border-[rgb(var(--border-secondary))] transition-colors ${
+                            index % 2 === 0
+                              ? 'bg-[rgb(var(--bg-secondary))]'
+                              : 'bg-[rgb(var(--bg-primary))]'
+                          } hover:bg-[rgb(var(--bg-tertiary))]`}
                         >
                           <td className="px-6 py-4">
                             <p className="font-medium text-[rgb(var(--text-primary))]">
@@ -276,22 +353,21 @@ export function MembersPage() {
                             </p>
                           </td>
                           <td className="px-6 py-4">
-                            <p className="text-sm text-[rgb(var(--text-secondary))]">{member.email}</p>
+                            <p className="text-[rgb(var(--text-secondary))]">
+                              {member.email}
+                            </p>
                           </td>
                           <td className="px-6 py-4">
                             <span
-                              className="px-3 py-1 rounded-full text-xs font-medium text-white"
-                              style={{
-                                backgroundColor: member.role === 'admin' ? '#ef4444' :
-                                  member.role === 'editor' ? '#3b82f6' : '#6b7280'
-                              }}
+                              className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium text-white"
+                              style={{ backgroundColor: getRoleColor(member.role) }}
                             >
                               {member.role}
                             </span>
                           </td>
                           <td className="px-6 py-4">
                             <span
-                              className={`px-3 py-1 rounded-full text-xs font-medium ${
+                              className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-medium ${
                                 member.is_banned
                                   ? 'bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400'
                                   : 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400'
@@ -302,6 +378,7 @@ export function MembersPage() {
                           </td>
                           <td className="px-6 py-4">
                             <button
+                              type="button"
                               onClick={() => handleSelectMember(member)}
                               className="text-[rgb(var(--accent-primary))] hover:underline text-sm font-medium"
                             >
@@ -320,47 +397,60 @@ export function MembersPage() {
           <div>
             {selectedMember ? (
               <div className="space-y-4">
-                <div className="bg-[rgb(var(--bg-secondary))] rounded-lg border border-[rgb(var(--border-primary))] p-6">
-                  <div className="flex items-center justify-between mb-4">
-                    <h3 className="text-lg font-semibold text-[rgb(var(--text-primary))]">
-                      {selectedMember.full_name}
-                    </h3>
+                <div className="bg-[rgb(var(--bg-secondary))] rounded-lg border border-[rgb(var(--border-primary))] p-6 shadow-sm">
+                  <div className="flex items-start justify-between mb-4">
+                    <div>
+                      <h3 className="text-lg font-semibold text-[rgb(var(--text-primary))]">
+                        {selectedMember.full_name}
+                      </h3>
+                      <p className="text-sm text-[rgb(var(--text-secondary))]">
+                        {selectedMember.email}
+                      </p>
+                      <p className="text-xs text-[rgb(var(--text-tertiary))] mt-1">
+                        Joined{' '}
+                        {selectedMember.created_at
+                          ? new Date(
+                              selectedMember.created_at
+                            ).toLocaleDateString()
+                          : 'Unknown'}
+                      </p>
+                    </div>
                     <button
-                      onClick={() => setSelectedMember(null)}
+                      type="button"
+                      onClick={() => {
+                        setSelectedMember(null);
+                        setMemberBadges([]);
+                      }}
                       className="text-[rgb(var(--text-tertiary))] hover:text-[rgb(var(--text-primary))]"
                     >
                       <X className="w-5 h-5" />
                     </button>
                   </div>
 
-                  <div className="space-y-4">
-                    <div>
-                      <p className="text-sm text-[rgb(var(--text-secondary))]">{selectedMember.email}</p>
-                      <p className="text-xs text-[rgb(var(--text-tertiary))] mt-1">
-                        Joined {new Date(selectedMember.created_at).toLocaleDateString()}
-                      </p>
-                    </div>
-
+                  <div className="space-y-3">
                     <button
+                      type="button"
                       onClick={() => {
                         setNewRole(selectedMember.role);
                         setShowRoleModal(true);
                       }}
-                      className="w-full flex items-center gap-2 px-4 py-2 bg-[rgb(var(--bg-tertiary))] hover:bg-[rgb(var(--border-primary))] text-[rgb(var(--text-primary))] rounded-lg transition-colors"
+                      className="w-full flex items-center justify-center gap-2 px-4 py-2 bg-[rgb(var(--bg-tertiary))] hover:bg-[rgb(var(--border-primary))] text-[rgb(var(--text-primary))] rounded-lg transition-colors text-sm"
                     >
                       <Shield className="w-4 h-4" />
                       Change Role
                     </button>
 
                     <button
+                      type="button"
                       onClick={() => setShowBadgeModal(true)}
-                      className="w-full flex items-center gap-2 px-4 py-2 bg-[rgb(var(--bg-tertiary))] hover:bg-[rgb(var(--border-primary))] text-[rgb(var(--text-primary))] rounded-lg transition-colors"
+                      className="w-full flex items-center justify-center gap-2 px-4 py-2 bg-[rgb(var(--bg-tertiary))] hover:bg-[rgb(var(--border-primary))] text-[rgb(var(--text-primary))] rounded-lg transition-colors text-sm"
                     >
                       <Award className="w-4 h-4" />
                       Add Badge
                     </button>
 
                     <button
+                      type="button"
                       onClick={() => {
                         if (selectedMember.is_banned) {
                           handleUnbanUser();
@@ -368,7 +458,7 @@ export function MembersPage() {
                           setShowBanModal(true);
                         }
                       }}
-                      className={`w-full flex items-center gap-2 px-4 py-2 rounded-lg transition-colors font-medium ${
+                      className={`w-full flex items-center justify-center gap-2 px-4 py-2 rounded-lg transition-colors font-medium text-sm ${
                         selectedMember.is_banned
                           ? 'bg-green-600 hover:bg-green-700 text-white'
                           : 'bg-red-600 hover:bg-red-700 text-white'
@@ -381,8 +471,10 @@ export function MembersPage() {
                 </div>
 
                 {memberBadges.length > 0 && (
-                  <div className="bg-[rgb(var(--bg-secondary))] rounded-lg border border-[rgb(var(--border-primary))] p-4">
-                    <h4 className="font-semibold text-[rgb(var(--text-primary))] mb-3">Badges</h4>
+                  <div className="bg-[rgb(var(--bg-secondary))] rounded-lg border border-[rgb(var(--border-primary))] p-4 shadow-sm">
+                    <h4 className="font-semibold text-[rgb(var(--text-primary))] mb-3 text-sm">
+                      Badges
+                    </h4>
                     <div className="space-y-2">
                       {memberBadges.map((badge) => (
                         <div
@@ -399,6 +491,7 @@ export function MembersPage() {
                             </span>
                           </div>
                           <button
+                            type="button"
                             onClick={() => handleRemoveBadge(badge.id)}
                             className="text-red-500 hover:text-red-600"
                           >
@@ -411,10 +504,10 @@ export function MembersPage() {
                 )}
               </div>
             ) : (
-              <div className="bg-[rgb(var(--bg-secondary))] rounded-lg border border-[rgb(var(--border-primary))] p-6 text-center">
+              <div className="bg-[rgb(var(--bg-secondary))] rounded-lg border border-[rgb(var(--border-primary))] p-6 text-center flex flex-col items-center justify-center h-full shadow-sm">
                 <Users className="w-12 h-12 mx-auto mb-3 text-[rgb(var(--text-tertiary))]" />
-                <p className="text-[rgb(var(--text-secondary))]">
-                  Select a member to manage
+                <p className="text-[rgb(var(--text-secondary))] text-sm">
+                  Select a member from the list to view and manage their details.
                 </p>
               </div>
             )}
@@ -422,6 +515,7 @@ export function MembersPage() {
         </div>
       </div>
 
+      {/* Change Role Modal */}
       {showRoleModal && selectedMember && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
           <div className="bg-[rgb(var(--bg-secondary))] rounded-lg shadow-[var(--shadow-lg)] border border-[rgb(var(--border-primary))] p-6 max-w-sm w-full mx-4">
@@ -431,23 +525,26 @@ export function MembersPage() {
             <div className="space-y-4">
               <select
                 value={newRole}
-                onChange={(e) => setNewRole(e.target.value)}
+                onChange={(e) => setNewRole(e.target.value as AppRole)}
                 className="w-full px-4 py-2 bg-[rgb(var(--bg-primary))] text-[rgb(var(--text-primary))] border border-[rgb(var(--border-secondary))] rounded-lg focus:outline-none focus:ring-2 focus:ring-[rgb(var(--accent-primary))]"
               >
                 <option value="viewer">Viewer</option>
                 <option value="editor">Editor</option>
                 <option value="admin">Admin</option>
+                <option value="owner">Owner</option>
               </select>
               <div className="flex gap-2">
                 <button
+                  type="button"
                   onClick={handleChangeRole}
-                  className="flex-1 px-4 py-2 bg-[rgb(var(--accent-primary))] hover:bg-[rgb(var(--accent-hover))] text-white rounded-lg font-medium transition-colors"
+                  className="flex-1 px-4 py-2 bg-[rgb(var(--accent-primary))] hover:bg-[rgb(var(--accent-hover))] text-white rounded-lg font-medium transition-colors text-sm"
                 >
                   Change
                 </button>
                 <button
+                  type="button"
                   onClick={() => setShowRoleModal(false)}
-                  className="flex-1 px-4 py-2 bg-[rgb(var(--bg-tertiary))] hover:bg-[rgb(var(--border-primary))] text-[rgb(var(--text-primary))] rounded-lg font-medium transition-colors"
+                  className="flex-1 px-4 py-2 bg-[rgb(var(--bg-tertiary))] hover:bg-[rgb(var(--border-primary))] text-[rgb(var(--text-primary))] rounded-lg font-medium transition-colors text-sm"
                 >
                   Cancel
                 </button>
@@ -457,6 +554,7 @@ export function MembersPage() {
         </div>
       )}
 
+      {/* Add Badge Modal */}
       {showBadgeModal && selectedMember && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
           <div className="bg-[rgb(var(--bg-secondary))] rounded-lg shadow-[var(--shadow-lg)] border border-[rgb(var(--border-primary))] p-6 max-w-sm w-full mx-4">
@@ -489,14 +587,16 @@ export function MembersPage() {
               </div>
               <div className="flex gap-2">
                 <button
+                  type="button"
                   onClick={handleAddBadge}
-                  className="flex-1 px-4 py-2 bg-[rgb(var(--accent-primary))] hover:bg-[rgb(var(--accent-hover))] text-white rounded-lg font-medium transition-colors"
+                  className="flex-1 px-4 py-2 bg-[rgb(var(--accent-primary))] hover:bg-[rgb(var(--accent-hover))] text-white rounded-lg font-medium transition-colors text-sm"
                 >
                   Add
                 </button>
                 <button
+                  type="button"
                   onClick={() => setShowBadgeModal(false)}
-                  className="flex-1 px-4 py-2 bg-[rgb(var(--bg-tertiary))] hover:bg-[rgb(var(--border-primary))] text-[rgb(var(--text-primary))] rounded-lg font-medium transition-colors"
+                  className="flex-1 px-4 py-2 bg-[rgb(var(--bg-tertiary))] hover:bg-[rgb(var(--border-primary))] text-[rgb(var(--text-primary))] rounded-lg font-medium transition-colors text-sm"
                 >
                   Cancel
                 </button>
@@ -506,6 +606,7 @@ export function MembersPage() {
         </div>
       )}
 
+      {/* Ban Modal */}
       {showBanModal && selectedMember && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
           <div className="bg-[rgb(var(--bg-secondary))] rounded-lg shadow-[var(--shadow-lg)] border border-[rgb(var(--border-primary))] p-6 max-w-sm w-full mx-4">
@@ -521,14 +622,16 @@ export function MembersPage() {
               />
               <div className="flex gap-2">
                 <button
+                  type="button"
                   onClick={handleBanUser}
-                  className="flex-1 px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg font-medium transition-colors"
+                  className="flex-1 px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg font-medium transition-colors text-sm"
                 >
                   Ban
                 </button>
                 <button
+                  type="button"
                   onClick={() => setShowBanModal(false)}
-                  className="flex-1 px-4 py-2 bg-[rgb(var(--bg-tertiary))] hover:bg-[rgb(var(--border-primary))] text-[rgb(var(--text-primary))] rounded-lg font-medium transition-colors"
+                  className="flex-1 px-4 py-2 bg-[rgb(var(--bg-tertiary))] hover:bg-[rgb(var(--border-primary))] text-[rgb(var(--text-primary))] rounded-lg font-medium transition-colors text-sm"
                 >
                   Cancel
                 </button>
@@ -538,6 +641,7 @@ export function MembersPage() {
         </div>
       )}
 
+      {/* Create Custom Role Modal */}
       {showCreateRoleModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
           <div className="bg-[rgb(var(--bg-secondary))] rounded-lg shadow-[var(--shadow-lg)] border border-[rgb(var(--border-primary))] p-6 max-w-sm w-full mx-4">
@@ -559,9 +663,9 @@ export function MembersPage() {
                 className="w-full px-4 py-2 bg-[rgb(var(--bg-primary))] text-[rgb(var(--text-primary))] placeholder:text-[rgb(var(--text-tertiary))] border border-[rgb(var(--border-secondary))] rounded-lg focus:outline-none focus:ring-2 focus:ring-[rgb(var(--accent-primary))] resize-none h-20"
               />
               <div className="flex items-center gap-2">
-                <label className="text-sm font-medium text-[rgb(var(--text-secondary))]">
+                <span className="text-sm font-medium text-[rgb(var(--text-secondary))]">
                   Badge Color:
-                </label>
+                </span>
                 <input
                   type="color"
                   value={newRoleColor}
@@ -571,14 +675,16 @@ export function MembersPage() {
               </div>
               <div className="flex gap-2">
                 <button
+                  type="button"
                   onClick={handleCreateCustomRole}
-                  className="flex-1 px-4 py-2 bg-[rgb(var(--accent-primary))] hover:bg-[rgb(var(--accent-hover))] text-white rounded-lg font-medium transition-colors"
+                  className="flex-1 px-4 py-2 bg-[rgb(var(--accent-primary))] hover:bg-[rgb(var(--accent-hover))] text-white rounded-lg font-medium transition-colors text-sm"
                 >
                   Create
                 </button>
                 <button
+                  type="button"
                   onClick={() => setShowCreateRoleModal(false)}
-                  className="flex-1 px-4 py-2 bg-[rgb(var(--bg-tertiary))] hover:bg-[rgb(var(--border-primary))] text-[rgb(var(--text-primary))] rounded-lg font-medium transition-colors"
+                  className="flex-1 px-4 py-2 bg-[rgb(var(--bg-tertiary))] hover:bg-[rgb(var(--border-primary))] text-[rgb(var(--text-primary))] rounded-lg font-medium transition-colors text-sm"
                 >
                   Cancel
                 </button>
