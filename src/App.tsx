@@ -1,5 +1,14 @@
 import { useState, useEffect } from 'react';
-import { Code2, Save, Plus, FileCode, LogIn, Lock, Eye, EyeOff } from 'lucide-react';
+import {
+  Code2,
+  Save,
+  Plus,
+  FileCode,
+  LogIn,
+  Lock,
+  Eye,
+  EyeOff,
+} from 'lucide-react';
 import { supabase, CodeSnippet } from './lib/supabase';
 import { SyntaxHighlightedEditor } from './components/SyntaxHighlightedEditor';
 import { SnippetList } from './components/SnippetList';
@@ -9,15 +18,20 @@ import { AuthModal } from './components/AuthModal';
 import { UserMenu } from './components/UserMenu';
 import { MembersPage } from './components/MembersPage';
 import { useAuth } from './contexts/AuthContext';
+import { useToast } from './contexts/ToastContext';
 
 function App() {
   const { user, profile, hasPermission, loading: authLoading } = useAuth();
+  const { showToast } = useToast();
+
   const [selectedLanguage, setSelectedLanguage] = useState<string>('JavaScript');
   const [code, setCode] = useState('');
   const [title, setTitle] = useState('');
   const [isPublic, setIsPublic] = useState(true);
   const [snippets, setSnippets] = useState<CodeSnippet[]>([]);
-  const [selectedSnippet, setSelectedSnippet] = useState<CodeSnippet | null>(null);
+  const [selectedSnippet, setSelectedSnippet] = useState<CodeSnippet | null>(
+    null
+  );
   const [isSaving, setIsSaving] = useState(false);
   const [showSidebar, setShowSidebar] = useState(true);
   const [showAuthModal, setShowAuthModal] = useState(false);
@@ -37,17 +51,22 @@ function App() {
 
     if (!error && data) {
       setSnippets(data as CodeSnippet[]);
+    } else if (error) {
+      showToast('Failed to load snippets', 'error');
     }
   };
 
   const handleSave = async () => {
-    if (!user) return;
+    if (!user) {
+      showToast('You must be signed in to save snippets', 'error');
+      return;
+    }
 
     setIsSaving(true);
     try {
       if (selectedSnippet) {
-        if (selectedSnippet.user_id !== user.id) {
-          alert('You can only edit your own snippets');
+        if (selectedSnippet.user_id !== user.id && profile?.role !== 'admin') {
+          showToast('You can only edit your own snippets', 'error');
           setIsSaving(false);
           return;
         }
@@ -65,11 +84,11 @@ function App() {
 
         if (!error) {
           await loadSnippets();
+          showToast('Snippet updated', 'success');
         } else {
-          alert('Failed to update snippet: ' + error.message);
+          showToast('Failed to update snippet', 'error');
         }
       } else {
-        if (!user) return;
         const { error } = await supabase
           .from('code_snippets')
           .insert({
@@ -84,6 +103,9 @@ function App() {
           await loadSnippets();
           setTitle('');
           setCode('');
+          showToast('Snippet created', 'success');
+        } else {
+          showToast('Failed to create snippet', 'error');
         }
       }
     } finally {
@@ -112,13 +134,16 @@ function App() {
     return snippet.user_id === user.id;
   };
 
-  if (showMembersPage && profile?.role === 'admin') {
+  // Members page gate
+  const isAdmin = profile?.role === 'admin' || profile?.role === 'owner';
+
+  if (showMembersPage && isAdmin) {
     return (
-      <div>
+      <div className="min-h-screen bg-[rgb(var(--bg-primary))]">
         <MembersPage />
         <button
           onClick={() => setShowMembersPage(false)}
-          className="fixed bottom-6 right-6 px-4 py-2 bg-[rgb(var(--accent-primary))] hover:bg-[rgb(var(--accent-hover))] text-white rounded-lg font-medium transition-colors"
+          className="fixed bottom-6 right-6 px-4 py-2 bg-[rgb(var(--accent-primary))] hover:bg-[rgb(var(--accent-hover))] text-white rounded-lg font-medium transition-colors shadow-lg"
         >
           Back to Editor
         </button>
@@ -127,12 +152,25 @@ function App() {
   }
 
   const handleDelete = async (id: string) => {
-    if (confirm('Are you sure you want to delete this snippet?')) {
-      await supabase.from('code_snippets').delete().eq('id', id);
+    // Simple confirm toast is overkill; keep native confirm or swap to custom dialog later
+    const confirmed = window.confirm(
+      'Are you sure you want to delete this snippet?'
+    );
+    if (!confirmed) return;
+
+    const { error } = await supabase
+      .from('code_snippets')
+      .delete()
+      .eq('id', id);
+
+    if (!error) {
       await loadSnippets();
       if (selectedSnippet?.id === id) {
         handleNew();
       }
+      showToast('Snippet deleted', 'success');
+    } else {
+      showToast('Failed to delete snippet', 'error');
     }
   };
 
@@ -188,8 +226,12 @@ function App() {
                 <Code2 className="w-6 h-6 text-white" />
               </div>
               <div>
-                <h1 className="text-2xl font-bold text-[rgb(var(--text-primary))]">CodeVault</h1>
-                <p className="text-sm text-[rgb(var(--text-secondary))]">Your multi-language code editor</p>
+                <h1 className="text-2xl font-bold text-[rgb(var(--text-primary))]">
+                  CodeVault
+                </h1>
+                <p className="text-sm text-[rgb(var(--text-secondary))]">
+                  Your multi-language code editor
+                </p>
               </div>
             </div>
             <div className="flex items-center gap-3">
@@ -219,16 +261,18 @@ function App() {
                 <Plus className="w-4 h-4" />
                 New
               </button>
-              {user && hasPermission('snippets', 'create') && (!selectedSnippet || canEditSnippet(selectedSnippet)) && (
-                <button
-                  onClick={handleSave}
-                  disabled={isSaving}
-                  className="px-4 py-2 bg-[rgb(var(--accent-primary))] hover:bg-[rgb(var(--accent-hover))] text-white rounded-lg transition-colors flex items-center gap-2 font-medium disabled:opacity-50"
-                >
-                  <Save className="w-4 h-4" />
-                  {isSaving ? 'Saving...' : 'Save'}
-                </button>
-              )}
+              {user &&
+                hasPermission('snippets', 'create') &&
+                (!selectedSnippet || canEditSnippet(selectedSnippet)) && (
+                  <button
+                    onClick={handleSave}
+                    disabled={isSaving}
+                    className="px-4 py-2 bg-[rgb(var(--accent-primary))] hover:bg-[rgb(var(--accent-hover))] text-white rounded-lg transition-colors flex items-center gap-2 font-medium disabled:opacity-50"
+                  >
+                    <Save className="w-4 h-4" />
+                    {isSaving ? 'Saving...' : 'Save'}
+                  </button>
+                )}
             </div>
           </div>
         </div>
@@ -292,7 +336,11 @@ function App() {
                           : 'bg-gray-500 text-white'
                       }`}
                     >
-                      {isPublic ? <Eye className="w-4 h-4" /> : <EyeOff className="w-4 h-4" />}
+                      {isPublic ? (
+                        <Eye className="w-4 h-4" />
+                      ) : (
+                        <EyeOff className="w-4 h-4" />
+                      )}
                       {isPublic ? 'Public' : 'Private'}
                     </button>
                   </div>
@@ -314,7 +362,8 @@ function App() {
                   {selectedSnippet && !canEditSnippet(selectedSnippet) && (
                     <div className="mt-2 p-3 bg-yellow-100 dark:bg-yellow-900/30 border border-yellow-300 dark:border-yellow-700 rounded-lg">
                       <p className="text-sm text-yellow-800 dark:text-yellow-300">
-                        This is a read-only snippet. You can only edit your own snippets.
+                        This is a read-only snippet. You can only edit your own
+                        snippets.
                       </p>
                     </div>
                   )}
@@ -343,7 +392,10 @@ function App() {
         </div>
       </div>
 
-      <AuthModal isOpen={showAuthModal} onClose={() => setShowAuthModal(false)} />
+      <AuthModal
+        isOpen={showAuthModal}
+        onClose={() => setShowAuthModal(false)}
+      />
     </div>
   );
 }
