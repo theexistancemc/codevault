@@ -95,7 +95,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         users: ['create', 'read', 'update', 'delete'],
         settings: ['manage'],
       },
-      },
       admin: {
         snippets: ['create', 'read', 'update', 'delete'],
         users: ['create', 'read', 'update', 'delete'],
