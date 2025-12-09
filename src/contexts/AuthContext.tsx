@@ -52,6 +52,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       .maybeSingle();
 
     if (!error && data) {
+      if (data.is_banned) {
+        await supabase.auth.signOut();
+        setUser(null);
+        setProfile(null);
+        setLoading(false);
+        return;
+      }
       setProfile(data as Profile);
     }
     setLoading(false);
@@ -72,10 +79,23 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   const signIn = async (email: string, password: string) => {
-    const { error } = await supabase.auth.signInWithPassword({
+    const { data, error } = await supabase.auth.signInWithPassword({
       email,
       password,
     });
+
+    if (!error && data.user) {
+      const { data: profileData } = await supabase
+        .from('profiles')
+        .select('is_banned')
+        .eq('id', data.user.id)
+        .maybeSingle();
+
+      if (profileData?.is_banned) {
+        await supabase.auth.signOut();
+        return { error: { message: 'Your account has been banned' } };
+      }
+    }
 
     return { error };
   };
