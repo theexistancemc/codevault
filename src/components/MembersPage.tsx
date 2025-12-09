@@ -669,6 +669,68 @@ export function MembersPage() {
               Add Badge to {selectedMember.full_name}
             </h3>
             <div className="space-y-4">
+              {availableBadges.length > 0 ? (
+                <>
+                  <label className="block text-sm font-medium text-[rgb(var(--text-primary))]">
+                    Select Badge
+                  </label>
+                  <select
+                    value={selectedBadge}
+                    onChange={(e) => setSelectedBadge(e.target.value)}
+                    className="w-full px-4 py-2 bg-[rgb(var(--bg-primary))] text-[rgb(var(--text-primary))] border border-[rgb(var(--border-secondary))] rounded-lg focus:outline-none focus:ring-2 focus:ring-[rgb(var(--accent-primary))]"
+                  >
+                    <option value="">Choose a badge...</option>
+                    {availableBadges.map((badge) => (
+                      <option key={badge.badge_name} value={badge.badge_name}>
+                        {badge.badge_icon} {badge.badge_name}
+                      </option>
+                    ))}
+                  </select>
+                </>
+              ) : (
+                <p className="text-sm text-[rgb(var(--text-secondary))]">
+                  No badges available yet. Create one first.
+                </p>
+              )}
+              <div className="flex gap-2">
+                <button
+                  type="button"
+                  onClick={() => setShowCreateBadgeModal(true)}
+                  className="flex-1 px-4 py-2 bg-[rgb(var(--bg-tertiary))] hover:bg-[rgb(var(--border-primary))] text-[rgb(var(--text-primary))] rounded-lg font-medium transition-colors text-sm flex items-center justify-center gap-2"
+                >
+                  <Plus className="w-4 h-4" />
+                  New
+                </button>
+              </div>
+              <div className="flex gap-2">
+                <button
+                  type="button"
+                  onClick={handleAddBadge}
+                  disabled={!selectedBadge}
+                  className="flex-1 px-4 py-2 bg-[rgb(var(--accent-primary))] hover:bg-[rgb(var(--accent-hover))] disabled:opacity-50 disabled:cursor-not-allowed text-white rounded-lg font-medium transition-colors text-sm"
+                >
+                  Add
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setShowBadgeModal(false)}
+                  className="flex-1 px-4 py-2 bg-[rgb(var(--bg-tertiary))] hover:bg-[rgb(var(--border-primary))] text-[rgb(var(--text-primary))] rounded-lg font-medium transition-colors text-sm"
+                >
+                  Cancel
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showCreateBadgeModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
+          <div className="bg-[rgb(var(--bg-secondary))] rounded-lg shadow-[var(--shadow-lg)] border border-[rgb(var(--border-primary))] p-6 max-w-sm w-full mx-4">
+            <h3 className="text-xl font-bold text-[rgb(var(--text-primary))] mb-4">
+              Create Badge Template
+            </h3>
+            <div className="space-y-4">
               <input
                 type="text"
                 value={badgeName}
@@ -695,14 +757,19 @@ export function MembersPage() {
               <div className="flex gap-2">
                 <button
                   type="button"
-                  onClick={handleAddBadge}
+                  onClick={handleCreateBadge}
                   className="flex-1 px-4 py-2 bg-[rgb(var(--accent-primary))] hover:bg-[rgb(var(--accent-hover))] text-white rounded-lg font-medium transition-colors text-sm"
                 >
-                  Add
+                  Create
                 </button>
                 <button
                   type="button"
-                  onClick={() => setShowBadgeModal(false)}
+                  onClick={() => {
+                    setShowCreateBadgeModal(false);
+                    setBadgeName('');
+                    setBadgeColor('#3b82f6');
+                    setBadgeIcon('⭐');
+                  }}
                   className="flex-1 px-4 py-2 bg-[rgb(var(--bg-tertiary))] hover:bg-[rgb(var(--border-primary))] text-[rgb(var(--text-primary))] rounded-lg font-medium transition-colors text-sm"
                 >
                   Cancel
