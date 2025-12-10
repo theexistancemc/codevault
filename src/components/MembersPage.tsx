@@ -13,7 +13,7 @@ import {
 } from 'lucide-react';
 
 type AppRole = 'owner' | 'admin' | 'editor' | 'viewer';
-type PermissionAction = 'read' | 'create' | 'update' | 'delete';
+type PermissionAction = 'read' | 'create' | 'update' | 'delete' | 'ban';
 type PermissionMap = Record<string, PermissionAction[]>;
 
 interface ExtendedProfile extends Profile {
@@ -22,6 +22,9 @@ interface ExtendedProfile extends Profile {
   custom_role_id?: string;
   last_login_at?: string;
   role: AppRole;
+  banned_by?: string | null;
+  ban_reason?: string | null;
+  banned_at?: string | null;
 }
 
 interface CustomRole {
@@ -45,6 +48,7 @@ const PERMISSION_ACTIONS: PermissionAction[] = [
   'create',
   'update',
   'delete',
+  'ban',
 ];
 
 const getRoleColor = (role: AppRole) => {
@@ -62,7 +66,7 @@ const getRoleColor = (role: AppRole) => {
 };
 
 export function MembersPage() {
-  const { user, profile } = useAuth();
+  const { user, profile, hasPermission } = useAuth();
   const { showToast } = useToast();
 
   const [members, setMembers] = useState<ExtendedProfile[]>([]);
@@ -199,19 +203,16 @@ export function MembersPage() {
     if (!selectedMember || !user || !banReason.trim()) return;
 
     const { error } = await supabase
-      .from('banned_users')
-      .insert({
-        user_id: selectedMember.id,
-        reason: banReason.trim(),
+      .from('profiles')
+      .update({ 
+        is_banned: true,
         banned_by: user.id,
-      });
+        ban_reason: banReason.trim(),
+        banned_at: new Date().toISOString()
+      })
+      .eq('id', selectedMember.id);
 
     if (!error) {
-      await supabase
-        .from('profiles')
-        .update({ is_banned: true })
-        .eq('id', selectedMember.id);
-
       await loadMembers();
       setShowBanModal(false);
       setBanReason('');
@@ -224,24 +225,24 @@ export function MembersPage() {
   const handleUnbanUser = async () => {
     if (!selectedMember) return;
 
-    const { error: deleteError } = await supabase
-      .from('banned_users')
-      .delete()
-      .eq('user_id', selectedMember.id);
+    const { error } = await supabase
+      .from('profiles')
+      .update({ 
+        is_banned: false,
+        banned_by: null,
+        ban_reason: null,
+        banned_at: null
+      })
+      .eq('id', selectedMember.id);
 
-    if (!deleteError) {
-      await supabase
-        .from('profiles')
-        .update({ is_banned: false })
-        .eq('id', selectedMember.id);
-
+    if (!error) {
       await loadMembers();
       showToast(`${selectedMember.full_name} has been unbanned`, 'success');
     } else {
       showToast('Failed to unban user', 'error');
     }
   };
-
+  
   const handleCreateBadge = async () => {
     if (!selectedMember || !user || !badgeName.trim()) return;
 
