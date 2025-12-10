@@ -84,26 +84,25 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       password,
     });
 
-  if (!error && data.user) {
-    const { data: profileData } = await supabase
-      .from('profiles')
-      .select('is_banned, banned_by, ban_reason, banned_at')
-      .eq('id', data.user.id)
-      .maybeSingle();
+    if (!error && data.user) {
+      const { data: profileData } = await supabase
+        .from('profiles')
+        .select('is_banned, banned_by, ban_reason, banned_at')
+        .eq('id', data.user.id)
+        .maybeSingle();
 
-    if (profileData?.is_banned) {
-      await supabase.auth.signOut();
-      return { 
-        error: { 
-          message: `Your account has been banned.\n\nReason:   ${profileData.ban_reason || 'No reason provided'}\nBanned by: ${profileData.banned_by || 'Unknown moderator'}\nDate: ${profileData.banned_at ? new Date(profileData.banned_at).toLocaleString() : 'Unknown'}` 
-        } 
-      };
+      if (profileData?.is_banned) {
+        await supabase.auth.signOut();
+        return { 
+          error: { 
+            message: `Your account has been banned.\n\nReason: ${profileData.ban_reason || 'No reason provided'}\nBanned by: ${profileData.banned_by || 'Unknown moderator'}\nDate: ${profileData.banned_at ? new Date(profileData.banned_at).toLocaleString() : 'Unknown'}` 
+          } 
+        };
+      }
     }
-  }
 
-  return { error };
-};
-
+    return { error };
+  };
 
   const signOut = async () => {
     await supabase.auth.signOut();
@@ -117,12 +116,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const rolePermissions: Record<string, Record<string, string[]>> = {
       owner: {
         snippets: ['create', 'read', 'update', 'delete'],
-        users: ['create', 'read', 'update', 'delete'],
+        users: ['create', 'read', 'update', 'delete', 'ban'],
         settings: ['manage'],
       },
       admin: {
         snippets: ['create', 'read', 'update', 'delete'],
-        users: ['create', 'read', 'update', 'delete'],
+        users: ['create', 'read', 'update', 'delete', 'ban'],
         settings: ['manage'],
       },
       editor: {
