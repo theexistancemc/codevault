@@ -78,12 +78,15 @@ export function MembersPage() {
   const [showBadgeModal, setShowBadgeModal] = useState(false);
   const [showBanModal, setShowBanModal] = useState(false);
   const [showCreateRoleModal, setShowCreateRoleModal] = useState(false);
+  const [showCreateBadgeModal, setShowCreateBadgeModal] = useState(false);
 
   const [newRole, setNewRole] = useState<AppRole>('editor');
   const [badgeName, setBadgeName] = useState('');
   const [badgeColor, setBadgeColor] = useState('#3b82f6');
   const [badgeIcon, setBadgeIcon] = useState('⭐');
   const [banReason, setBanReason] = useState('');
+  const [availableBadges, setAvailableBadges] = useState<UserBadge[]>([]);
+  const [selectedBadge, setSelectedBadge] = useState('');
 
   const [newRoleName, setNewRoleName] = useState('');
   const [newRoleColor, setNewRoleColor] = useState('#3b82f6');
@@ -149,9 +152,30 @@ export function MembersPage() {
     }
   };
 
+  const loadAvailableBadges = async () => {
+    const { data, error } = await supabase
+      .from('user_badges')
+      .select('badge_name, badge_color, badge_icon')
+      .order('badge_name', { ascending: true });
+
+    if (!error && data) {
+      const uniqueBadges = Array.from(
+        new Map(
+          data.map((badge: any) => [badge.badge_name, badge])
+        ).values()
+      );
+      setAvailableBadges(uniqueBadges as UserBadge[]);
+    } else {
+      setAvailableBadges([]);
+    }
+  };
+
   const handleSelectMember = async (member: ExtendedProfile) => {
     setSelectedMember(member);
-    await loadMemberBadges(member.id);
+    await Promise.all([
+      loadMemberBadges(member.id),
+      loadAvailableBadges(),
+    ]);
   };
 
   const handleChangeRole = async () => {
@@ -218,7 +242,7 @@ export function MembersPage() {
     }
   };
 
-  const handleAddBadge = async () => {
+  const handleCreateBadge = async () => {
     if (!selectedMember || !user || !badgeName.trim()) return;
 
     const { error } = await supabase
@@ -232,10 +256,41 @@ export function MembersPage() {
       });
 
     if (!error) {
-      await loadMemberBadges(selectedMember.id);
+      await Promise.all([
+        loadMemberBadges(selectedMember.id),
+        loadAvailableBadges(),
+      ]);
       setBadgeName('');
       setBadgeColor('#3b82f6');
       setBadgeIcon('⭐');
+      setShowCreateBadgeModal(false);
+      setSelectedBadge('');
+      showToast('Badge created and assigned successfully', 'success');
+    } else {
+      showToast('Failed to create badge', 'error');
+    }
+  };
+
+  const handleAddBadge = async () => {
+    if (!selectedMember || !user || !selectedBadge) return;
+
+    const badge = availableBadges.find(b => b.badge_name === selectedBadge);
+    if (!badge) return;
+
+    const { error } = await supabase
+      .from('user_badges')
+      .insert({
+        user_id: selectedMember.id,
+        badge_name: badge.badge_name,
+        badge_color: badge.badge_color,
+        badge_icon: badge.badge_icon,
+        issued_by: user.id,
+      });
+
+    if (!error) {
+      await loadMemberBadges(selectedMember.id);
+      setShowBadgeModal(false);
+      setSelectedBadge('');
       showToast('Badge added successfully', 'success');
     } else {
       showToast('Failed to add badge', 'error');
