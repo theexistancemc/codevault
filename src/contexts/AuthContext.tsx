@@ -95,7 +95,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       await supabase.auth.signOut();
       return { 
         error: { 
-          message: `Your account has been banned.\n\nReason: ${profileData.ban_reason || 'No reason provided'}\nBanned by: ${profileData.banned_by || 'Unknown moderator'}\nDate: ${profileData.banned_at ? new Date(profileData.banned_at).toLocaleString() : 'Unknown'}` 
+          message: `Your account has been banned.\n\nReason:   ${profileData.ban_reason || 'No reason provided'}\nBanned by: ${profileData.banned_by || 'Unknown moderator'}\nDate: ${profileData.banned_at ? new Date(profileData.banned_at).toLocaleString() : 'Unknown'}` 
         } 
       };
     }
