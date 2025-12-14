@@ -1,4 +1,3 @@
-# Members Page is Broken currently
 # codevault V2
 codevault is a shared library and codebase designed for website development and technology projects. Its aim is to streamline and organize reusable code, serving as a resource for web developers and project collaborators.
 
