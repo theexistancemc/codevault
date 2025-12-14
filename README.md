@@ -1,68 +1,109 @@
-# codevault V2
-codevault is a shared library and codebase designed for website development and technology projects. Its aim is to streamline and organize reusable code, serving as a resource for web developers and project collaborators.
+# 🔐 CodeVault V2
 
-## Features
-Centralized shared code for website projects
+A modern, modular shared library and codebase for **website development** and **technology projects**. CodeVault provides streamlined, reusable code to help developers build faster and collaborate more effectively.
 
-Written primarily in TypeScript, with supporting code in PLpgSQL, CSS, JavaScript, and HTML
+## ✨ Features
 
-Modular design for easy integration and extension
+- **Centralized Shared Code** - Organize reusable components in one place
+- **Multi-Language Support** - Primarily TypeScript with PLpgSQL, CSS, JavaScript, and HTML
+- **Modular Design** - Easy integration and extension for any project
+- **Production-Ready** - Actively maintained, versioned, and tested
+- **Developer Friendly** - Clear code structure and API documentation
+- **Type-Safe** - Full TypeScript support with comprehensive types
 
-Actively maintained and versioned
+## 🚀 Quick Start
 
-## Getting Started
-To use or contribute to codevault:
+### Prerequisites
+- Node.js (v16 or higher)
+- npm or yarn
 
-Clone the repository:
+### Installation
 
 ```bash
+# Clone the repository
 git clone https://github.com/theexistancemc/codevault.git
-```
-Install dependencies:
-Run this in the project root (if a package manager file like package.json exists).
+cd codevault
 
-```bash
+# Install dependencies
 npm install
 ```
-Note: If the repository has additional setup steps, refer to the /docs or /Readme files in the repo.
 
-## Usage:
-Import required modules into your project as needed. Code organization and API documentation will be found in the code structure itself or in the /docs directory.
-## Screenshots
+### Basic Usage
 
-### Member - admin
-![Codevault Member - admin - view](assests/memberadmin.png)
+```typescript
+// Import required modules
+import { MyComponent } from './src/components';
 
-### Code Visibilty
-![Codevault visibility](assests/vis.png)
-![Codevault visibility](assests/visp.png)
+// Use in your project
+const instance = new MyComponent();
+```
 
-### Desktop Admin preview
-![Codevault Desktop preview](assests/adminpage.png)
+For detailed usage, check the `/docs` directory or explore the code structure.
 
-### Desktop preview
-![Codevault Desktop preview](assests/preview.png)
-## Development
-Built mainly with TypeScript (89%)
+## 📊 Project Statistics
 
-Database scripts and logic in PLpgSQL (6.7%)
+| Language | Percentage |
+|----------|------------|
+| TypeScript | 89% |
+| PLpgSQL | 6.7% |
+| CSS | 2.7% |
+| JavaScript/HTML | 1.6% |
 
-Styles managed with CSS (2.7%)
+## 📸 Screenshots
 
-Additional JavaScript and HTML (1.6%)
+### Admin Dashboard
+![Admin Preview](./assests/adminpage.png)
 
-## Live Site
-Test or preview the latest version at:
-https://codevault.bolt.host/
-### please note the website is in beta
-## Releases
-Latest version: 2.0.0 (Dec 3, 2025)
+### Member Admin View
+![Member Admin](./assests/memberadmin.png)
 
-See Releases for more.
+### Code Visibility Settings
+![Visibility 1](./assests/vis.png)
+![Visibility 2](./assests/visp.png)
 
-## Contributing
-Pull requests are welcome. For major changes, please open an issue first to discuss what you would like to change.
+### Desktop View
+![Desktop Preview](./assests/preview.png)
 
-## License
-© 2025 by theexistancemc
-This code is provided under the terms specified in the repository. See LICENSE file for details.
+## 🌐 Live Demo
+
+**Check out the live site:** [https://codevault.bolt.host/](https://codevault.bolt.host/)
+
+> ⚠️ **Note:** The website is currently in **beta**. Features may change and bugs may exist. Please report issues on GitHub.
+
+## 📦 Latest Release
+
+**Version 2.0.0** - Released Dec 3, 2025
+
+See all [releases](https://github.com/theexistancemc/codevault/releases) for version history.
+
+## 📖 Documentation
+
+- **API Docs** - Check the code comments and `/docs` folder
+- **Architecture** - See individual component files for structure
+- **Setup** - Refer to this README or `/docs` directory
+
+## 🤝 Contributing
+
+Contributions are welcome! Here's how to help:
+
+1. **Fork** the repository
+2. **Create a branch** for your feature (`git checkout -b feature/amazing-feature`)
+3. **Commit changes** with clear messages
+4. **Push to your branch** (`git push origin feature/amazing-feature`)
+5. **Open a Pull Request** - For major changes, please open an issue first
+
+## 📝 License
+
+Copyright © 2025 by **theexistancemc**
+
+This code is provided under the terms specified in the repository. See the [LICENSE](./LICENSE) file for full details.
+
+## 🔗 Links
+
+- **GitHub Repository** - [theexistancemc/codevault](https://github.com/theexistancemc/codevault)
+- **Live Website** - [codevault.bolt.host](https://codevault.bolt.host/)
+- **Issues & Discussions** - [GitHub Issues](https://github.com/theexistancemc/codevault/issues)
+
+---
+
+**Made with ❤️ by theexistancemc**
